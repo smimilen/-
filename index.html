@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dota 2 Stats — Winline</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0d14;--card:#0e1220;--raised:#131826;--hover:#181f30;
+  --b:rgba(255,255,255,0.07);--bhi:rgba(255,255,255,0.14);
+  --A:#3d9eff;--B:#ff7040;--gA:rgba(61,158,255,0.15);--gB:rgba(255,112,64,0.15);
+  --win:#00e5a0;--lose:#ff4d6d;--gold:#ffba30;
+  --t1:#eef2ff;--t2:#6e7a96;--t3:#2e374e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t1);font-family:'Exo 2',sans-serif;font-size:13px;min-height:100vh}
+.shell{max-width:980px;margin:0 auto;padding:20px 16px}
+.tabs{display:flex;gap:3px;background:var(--card);border:1px solid var(--b);border-radius:10px;padding:4px;margin-bottom:14px}
+.tab{flex:1;padding:9px 8px;border:none;background:transparent;color:var(--t2);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;border-radius:7px;cursor:pointer;transition:all .18s}
+.tab.on{background:var(--raised);color:var(--t1);box-shadow:0 -2px 0 var(--A) inset}
+.tab:hover:not(.on){color:var(--t1);background:rgba(255,255,255,.03)}
+.panel{display:none;animation:fadeUp .22s ease}
+.panel.on{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--card);border:1px solid var(--b);border-radius:12px;margin-bottom:10px;position:relative;overflow:hidden}
+.card-pad{padding:18px 20px}
+.sec-label{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--t3);margin-bottom:14px}
+
+/* H2H */
+.h2h{display:grid;grid-template-columns:1fr 140px 1fr;align-items:center}
+.h2h::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,var(--gA) 0%,transparent 45%,transparent 55%,var(--gB) 100%);pointer-events:none}
+.side{display:flex;flex-direction:column;gap:10px}
+.side.r{align-items:flex-end}
+.t-row{display:flex;align-items:center;gap:10px}
+.side.r .t-row{flex-direction:row-reverse}
+.t-badge{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:800;font-size:13px;flex-shrink:0}
+.ba{background:rgba(61,158,255,.18);color:var(--A);border:1px solid rgba(61,158,255,.3)}
+.bb{background:rgba(255,112,64,.18);color:var(--B);border:1px solid rgba(255,112,64,.3)}
+.t-name{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:20px}
+.wr-row{display:flex;align-items:baseline;gap:6px}
+.side.r .wr-row{flex-direction:row-reverse}
+.wr-big{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:28px}
+.wra{color:var(--A)}.wrb{color:var(--B)}.wr-sub{font-size:11px;color:var(--t2)}
+.form{display:flex;gap:5px}
+.side.r .form{flex-direction:row-reverse}
+.fd{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:800;font-size:9px}
+.fw{background:rgba(0,229,160,.14);color:var(--win);border:1px solid rgba(0,229,160,.3)}
+.fl{background:rgba(255,77,109,.12);color:var(--lose);border:1px solid rgba(255,77,109,.25)}
+.vs-col{display:flex;flex-direction:column;align-items:center;gap:5px;padding:20px 12px;border-left:1px solid var(--b);border-right:1px solid var(--b)}
+.vs-lbl{font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--t3)}
+.vs-score{font-family:'Rajdhani',sans-serif;font-weight:800;font-size:32px;display:flex;gap:6px}
+.vs-sep{color:var(--t3);font-size:18px;line-height:1.8}
+
+/* LEGEND STRIP */
+.legend-strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;background:var(--raised);border-radius:8px;border:1px solid var(--b)}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2)}
+.leg-line{width:20px;height:3px;border-radius:99px;flex-shrink:0}
+
+/* CMP BARS */
+.cmp-grid{display:flex;flex-direction:column;gap:10px}
+.cmp-item{display:flex;flex-direction:column;gap:5px}
+.cmp-label-row{display:flex;align-items:center;gap:6px}
+.cmp-lbl-main{font-size:12px;color:var(--t1)}
+.cmp-lbl-hint{font-size:11px;color:var(--t3)}
+.cmp-row{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:12px}
+.cv{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:16px}
+.cva{color:var(--A);text-align:right}.cvb{color:var(--B)}
+.bar-wrap{position:relative;height:6px;background:rgba(255,255,255,.05);border-radius:99px;overflow:hidden}
+.bar-a{position:absolute;left:0;top:0;bottom:0;background:var(--A);border-radius:99px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.bar-b{position:absolute;right:0;top:0;bottom:0;background:var(--B);border-radius:99px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+
+/* POOL */
+.pool-header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 20px 12px;border-bottom:1px solid var(--b);background:var(--raised)}
+.ph-team{display:flex;align-items:center;gap:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px}
+.ph-team.r{justify-content:flex-end}
+.ph-badge{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.ph-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:16px;text-align:center}
+.pool-subtabs{display:flex;gap:3px;padding:10px 20px;border-bottom:1px solid var(--b)}
+.pst{padding:6px 16px;border:none;border-radius:7px;background:transparent;color:var(--t2);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .15s}
+.pst.on{background:var(--raised);color:var(--t1)}
+.pst:hover:not(.on){color:var(--t1);background:rgba(255,255,255,.03)}
+.pool-legend{display:flex;align-items:center;gap:14px;padding:8px 20px 10px;border-bottom:1px solid var(--b);flex-wrap:wrap;background:rgba(255,255,255,.01)}
+.pl-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.pl-dot{width:8px;height:8px;border-radius:50%}
+.pool-body{display:grid;grid-template-columns:1fr 1fr}
+.pool-half{padding:14px}
+.pool-half.pleft{border-right:1px solid var(--b)}
+.pool-half-title{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.pdot{width:7px;height:7px;border-radius:50%}
+.hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ht{position:relative;border-radius:8px;overflow:hidden;background:var(--raised);border:1px solid var(--b);cursor:default;transition:transform .12s,border-color .12s;aspect-ratio:16/10}
+.ht:hover{transform:translateY(-2px);border-color:var(--bhi)}
+.ht.ban{filter:saturate(.2) brightness(.72)}
+.ht.ban:hover{filter:saturate(.35) brightness(.85)}
+.ht img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block;transition:transform .2s}
+.ht:hover img{transform:scale(1.05)}
+.ht-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.78);border-radius:5px;padding:2px 6px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;color:var(--t1);line-height:1;backdrop-filter:blur(4px)}
+.ht.ban .ht-badge{background:rgba(255,186,48,.28);color:var(--gold)}
+.ht-wr{position:absolute;bottom:4px;right:4px;border-radius:4px;padding:2px 5px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;backdrop-filter:blur(4px);background:rgba(0,0,0,.72)}
+.wr-hi{color:var(--win)}.wr-md{color:var(--gold)}.wr-lo{color:var(--lose)}
+.ht-name{position:absolute;bottom:0;left:0;right:0;padding:16px 5px 5px;background:linear-gradient(transparent,rgba(0,0,0,.88));font-family:'Rajdhani',sans-serif;font-weight:600;font-size:10px;opacity:0;transition:opacity .15s;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ht:hover .ht-name{opacity:1}
+.ban-strip{padding:12px 14px 14px;border-top:1px solid var(--b);background:rgba(255,186,48,.04)}
+.ban-strip-title{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+.ban-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ban-side{display:flex;gap:6px}
+.ban-side.r{justify-content:flex-end}
+
+/* PLAYERS */
+.cmp-header{display:grid;grid-template-columns:1fr auto 1fr;border-bottom:1px solid var(--b)}
+.cmp-player{padding:14px 18px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden}
+.cmp-player.pleft{background:linear-gradient(135deg,rgba(61,158,255,.09) 0%,transparent 60%)}
+.cmp-player.pright{background:linear-gradient(225deg,rgba(255,112,64,.09) 0%,transparent 60%);align-items:flex-end}
+.cmp-selector{display:flex;align-items:center;gap:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:17px;cursor:pointer}
+.cmp-player.pright .cmp-selector{flex-direction:row-reverse}
+.cmp-meta{display:flex;align-items:center;gap:10px}
+.cmp-player.pright .cmp-meta{flex-direction:row-reverse}
+.cmp-meta-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+.cmi-label{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;color:var(--t1)}
+.cmi-sub{font-size:10px;color:var(--t2)}
+.cmp-vs{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px;background:var(--raised);border-left:1px solid var(--b);border-right:1px solid var(--b)}
+.vs-big{font-family:'Rajdhani',sans-serif;font-weight:800;font-size:22px;color:var(--t3);letter-spacing:2px}
+.top5-wrap{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--b)}
+.top5-half{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:12px 18px}
+.top5-half.rside{border-left:1px solid var(--b)}
+.sk{display:flex;flex-direction:column;gap:3px}
+.sk-v{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px}
+.sk-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+.color-hint{display:flex;gap:14px;padding:6px 18px 8px;flex-wrap:wrap;border-top:1px solid var(--b)}
+.ch-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.ch-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.detail-table{display:grid;grid-template-columns:1fr 1fr}
+.dt-half{padding:10px 18px;display:flex;flex-direction:column}
+.dt-half.dborder{border-left:1px solid var(--b)}
+.dt-sec{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;padding:6px 0 4px}
+.dt-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--b)}
+.dt-row:last-child{border-bottom:none}
+.dt-key{color:var(--t2);font-size:12px}
+.dt-val{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px}
+.dv-hi{color:var(--win)}.dv-md{color:var(--gold)}.dv-lo{color:var(--lose)}
+.hr-section{display:grid;grid-template-columns:1fr 270px 1fr;border-top:1px solid var(--b)}
+.hr-heroes{padding:14px 14px 16px}
+.hr-heroes.hborder{border-left:1px solid var(--b)}
+.hr-title{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
+.hr-row{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:8px;background:var(--raised);border:1px solid transparent;margin-bottom:5px;transition:border-color .15s,background .15s;cursor:default}
+.hr-row:hover{background:var(--hover);border-color:var(--bhi)}
+.hr-row.rev{flex-direction:row-reverse}
+.hr-img{width:50px;height:31px;border-radius:5px;object-fit:cover;object-position:center 20%;flex-shrink:0;background:var(--hover)}
+.hr-info{flex:1;min-width:0}
+.hr-info.r{text-align:right}
+.hr-name{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hr-sub{font-size:10px;color:var(--t2)}
+.hr-wr{font-family:'Rajdhani',sans-serif;font-weight:800;font-size:16px;flex-shrink:0}
+.radar-center{padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;border-left:1px solid var(--b);border-right:1px solid var(--b)}
+.rc-title{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);text-align:center}
+svg.rv{width:240px;height:240px;overflow:visible}
+.rg{fill:none;stroke:rgba(255,255,255,0.08);stroke-width:1}
+.rs{stroke:rgba(255,255,255,0.07);stroke-width:1}
+.ra{stroke-width:2;stroke-linejoin:round}
+.ra-A{fill:rgba(61,158,255,.2);stroke:var(--A)}
+.ra-B{fill:rgba(255,112,64,.15);stroke:var(--B)}
+.rd-A{fill:var(--A)}.rd-B{fill:var(--B)}
+.rl-text{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;fill:var(--t2);text-anchor:middle}
+.rl-scale{font-family:'Rajdhani',sans-serif;font-size:8px;fill:#2e374e;text-anchor:middle}
+.radar-legend{display:flex;gap:14px}
+.rl{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.rl-sw{width:20px;height:3px;border-radius:99px}
+
+/* TOURNAMENT */
+.tourn-hdr{padding:16px 20px 14px;border-bottom:1px solid var(--b);background:var(--raised)}
+.tourn-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:17px;margin-bottom:6px}
+.tourn-meta{display:flex;gap:24px;flex-wrap:wrap}
+.tm-item{display:flex;flex-direction:column;gap:2px}
+.tm-val{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px}
+.tm-label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+.teams-strip{padding:14px 20px;border-bottom:1px solid var(--b)}
+.teams-grid{display:flex;gap:7px;flex-wrap:wrap}
+.team-chip{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 10px;border-radius:8px;background:var(--raised);border:1px solid var(--b);cursor:pointer;transition:border-color .15s,background .15s;min-width:66px}
+.team-chip:hover{background:var(--hover);border-color:var(--bhi)}
+.team-logo-fake{width:36px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:800;font-size:12px}
+.team-chip-name{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;text-align:center;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px}
+.match-hdr{padding:12px 20px 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--b);padding-bottom:0}
+.match-hdr-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;padding-bottom:12px}
+.mlist{display:flex;flex-direction:column}
+.mr{display:grid;grid-template-columns:90px 1fr 86px 1fr 76px;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--b);cursor:pointer;transition:background .12s}
+.mr:last-child{border-bottom:none}
+.mr:hover{background:rgba(255,255,255,.018)}
+.mr.live{background:rgba(0,229,160,.03);border-left:3px solid var(--win)}
+.mr-date{font-size:11px;color:var(--t2);line-height:1.5}
+.mr-live-lbl{font-size:9px;color:var(--win);font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.mt-cell{display:flex;align-items:center;gap:8px}
+.mt-cell.r{justify-content:flex-end}
+.mt-logo-fake{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:800;font-size:9px;flex-shrink:0}
+.mt-name{font-family:'Rajdhani',sans-serif;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.mscore{display:flex;gap:6px;justify-content:center;align-items:center;font-family:'Rajdhani',sans-serif;font-weight:800;font-size:20px}
+.ms-sep{color:var(--t3);font-size:13px}
+.sw{color:var(--win)}.sl{color:var(--lose)}.sn{color:var(--t2);font-size:13px;letter-spacing:1px}
+.mr-fmt{font-size:10px;color:var(--t3);text-align:right;text-transform:uppercase;letter-spacing:.5px}
+.mr-fmt.ltag{color:var(--win)}
+.pager{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;font-size:12px;color:var(--t2);border-top:1px solid var(--b)}
+.pb{width:28px;height:28px;border-radius:6px;background:var(--raised);border:1px solid var(--b);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
+.pb:hover{color:var(--t1);border-color:var(--bhi)}
+.stabs{display:flex;gap:0;border-bottom:1px solid var(--b);padding:0 20px}
+.stab{padding:10px 16px;border:none;background:transparent;color:var(--t2);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;transition:all .15s;border-bottom:2px solid transparent}
+.stab.on{color:var(--t1);border-bottom-color:var(--A)}
+.stab:hover:not(.on){color:var(--t1)}
+.htable{display:flex;flex-direction:column;gap:5px}
+.htr{display:grid;grid-template-columns:44px 1fr 55px 55px 100px;align-items:center;gap:12px;padding:9px 14px;border-radius:9px;background:var(--raised);transition:background .15s;cursor:default}
+.htr:hover{background:var(--hover)}
+.h-art{width:42px;height:26px;border-radius:5px;object-fit:cover;object-position:center 20%;background:var(--hover)}
+.hn{font-family:'Rajdhani',sans-serif;font-weight:600;font-size:14px}
+.hs{font-size:11px;color:var(--t2)}
+.htn{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;text-align:center}
+.htl{font-size:9px;color:var(--t3);text-align:center;text-transform:uppercase;letter-spacing:.4px}
+.htwr{display:flex;flex-direction:column;gap:3px}
+.htwr-v{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;text-align:right}
+.htwr-bar{height:4px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;margin-top:2px}
+.htwr-fill{height:100%;border-radius:99px}
+.th-row{display:grid;grid-template-columns:44px 1fr 55px 55px 100px;gap:12px;padding:6px 14px 8px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+.th-row span:nth-child(3),.th-row span:nth-child(4){text-align:center}
+.th-row span:last-child{text-align:right}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="tabs">
+  <button class="tab on"  onclick="sw('team')">Команды</button>
+  <button class="tab"     onclick="sw('players')">Игроки</button>
+  <button class="tab"     onclick="sw('tourn')">Турнир</button>
+</div>
+
+<!-- ══════════════════ КОМАНДЫ ══════════════════ -->
+<div class="panel on" id="p-team">
+
+  <div class="card card-pad">
+    <div class="h2h">
+      <div class="side">
+        <div class="t-row"><div class="t-badge ba">IC</div><span class="t-name">Inner Circle</span></div>
+        <div class="wr-row"><span class="wr-big wra">48%</span><span class="wr-sub">побед</span></div>
+        <div class="form">
+          <div class="fd fl" title="Поражение">П</div><div class="fd fl" title="Поражение">П</div>
+          <div class="fd fw" title="Победа">В</div><div class="fd fw" title="Победа">В</div><div class="fd fw" title="Победа">В</div>
+        </div>
+      </div>
+      <div class="vs-col">
+        <span class="vs-lbl">Очные встречи</span>
+        <div class="vs-score"><span class="wra">0</span><span class="vs-sep">:</span><span class="wrb">2</span></div>
+        <span class="vs-lbl">vs</span>
+      </div>
+      <div class="side r">
+        <div class="t-row"><div class="t-badge bb">MD</div><span class="t-name">MODUS</span></div>
+        <div class="wr-row"><span class="wr-big wrb">52%</span><span class="wr-sub">побед</span></div>
+        <div class="form">
+          <div class="fd fw" title="Победа">В</div><div class="fd fl" title="Поражение">П</div>
+          <div class="fd fl" title="Поражение">П</div><div class="fd fl" title="Поражение">П</div><div class="fd fw" title="Победа">В</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-pad">
+    <div class="sec-label">Ключевые показатели</div>
+    <div class="legend-strip">
+      <div class="leg-item"><div class="leg-line" style="background:var(--A)"></div><strong style="color:var(--A)">Inner Circle</strong></div>
+      <div class="leg-item"><div class="leg-line" style="background:var(--B)"></div><strong style="color:var(--B)">MODUS</strong></div>
+      <span style="margin-left:auto;font-size:10px;color:var(--t3)">Чем длиннее полоса — тем чаще команда получает преимущество первой</span>
+    </div>
+    <div class="cmp-grid">
+      <div class="cmp-item">
+        <div class="cmp-label-row"><span class="cmp-lbl-main">⚔️ Первая кровь</span><span class="cmp-lbl-hint">— кто убивает первым</span></div>
+        <div class="cmp-row"><span class="cv cva">62%</span><div class="bar-wrap"><div class="bar-a" style="width:62%"></div><div class="bar-b" style="width:38%"></div></div><span class="cv cvb">38%</span></div>
+      </div>
+      <div class="cmp-item">
+        <div class="cmp-label-row"><span class="cmp-lbl-main">🏰 Первая башня</span><span class="cmp-lbl-hint">— кто сносит вышку первым</span></div>
+        <div class="cmp-row"><span class="cv cva">45%</span><div class="bar-wrap"><div class="bar-a" style="width:45%"></div><div class="bar-b" style="width:55%"></div></div><span class="cv cvb">55%</span></div>
+      </div>
+      <div class="cmp-item">
+        <div class="cmp-label-row"><span class="cmp-lbl-main">💀 Первый Рошан</span><span class="cmp-lbl-hint">— нейтральный босс, даёт аеджис бессмертия</span></div>
+        <div class="cmp-row"><span class="cv cva">24%</span><div class="bar-wrap"><div class="bar-a" style="width:24%"></div><div class="bar-b" style="width:76%"></div></div><span class="cv cvb">76%</span></div>
+      </div>
+      <div class="cmp-item">
+        <div class="cmp-label-row"><span class="cmp-lbl-main">🏚️ Первый барак</span><span class="cmp-lbl-hint">— прорыв вглубь базы противника</span></div>
+        <div class="cmp-row"><span class="cv cva">39%</span><div class="bar-wrap"><div class="bar-a" style="width:39%"></div><div class="bar-b" style="width:61%"></div></div><span class="cv cvb">61%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПУЛ ГЕРОЕВ -->
+  <div class="card">
+    <div class="pool-header">
+      <div class="ph-team"><div class="ph-badge ba">IC</div>Inner Circle</div>
+      <div class="ph-title">Пул героев</div>
+      <div class="ph-team r">MODUS<div class="ph-badge bb">MD</div></div>
+    </div>
+    <div class="pool-subtabs">
+      <button class="pst on" onclick="poolTab('picks',this)">Пики</button>
+      <button class="pst"    onclick="poolTab('bans',this)">Баны</button>
+    </div>
+    <div class="pool-legend">
+      <span style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-right:4px">Win%:</span>
+      <div class="pl-item"><div class="pl-dot" style="background:var(--win)"></div>выше 60% — сильный пик</div>
+      <div class="pl-item"><div class="pl-dot" style="background:var(--gold)"></div>40–60% — средний</div>
+      <div class="pl-item"><div class="pl-dot" style="background:var(--lose)"></div>ниже 40% — слабый</div>
+      <div class="pl-item" style="margin-left:auto;color:var(--t3)"><span style="background:rgba(0,0,0,.7);border-radius:4px;padding:1px 5px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;color:var(--t1)">17</span>&nbsp;— кол-во пиков</div>
+    </div>
+    <div id="pool-picks">
+      <div class="pool-body">
+        <div class="pool-half pleft">
+          <div class="pool-half-title"><div class="pdot" style="background:var(--A)"></div><span style="color:var(--A)">Inner Circle</span><span style="color:var(--t3)">· по числу пиков</span></div>
+          <div class="hero-grid" id="grid-ic-picks"></div>
+        </div>
+        <div class="pool-half">
+          <div class="pool-half-title"><div class="pdot" style="background:var(--B)"></div><span style="color:var(--B)">MODUS</span><span style="color:var(--t3)">· по числу пиков</span></div>
+          <div class="hero-grid" id="grid-md-picks"></div>
+        </div>
+      </div>
+      <div class="ban-strip">
+        <div class="ban-strip-title">🚫 Самые баненые герои (серые = запрещены к пику)</div>
+        <div class="ban-row"><div class="ban-side" id="ban-ic"></div><div class="ban-side r" id="ban-md"></div></div>
+      </div>
+    </div>
+    <div id="pool-bans" style="display:none">
+      <div class="pool-body">
+        <div class="pool-half pleft">
+          <div class="pool-half-title"><div class="pdot" style="background:var(--A)"></div><span style="color:var(--A)">Inner Circle</span><span style="color:var(--t3)">· забанила</span></div>
+          <div class="hero-grid" id="grid-ic-bans"></div>
+        </div>
+        <div class="pool-half">
+          <div class="pool-half-title"><div class="pdot" style="background:var(--B)"></div><span style="color:var(--B)">MODUS</span><span style="color:var(--t3)">· забанил</span></div>
+          <div class="hero-grid" id="grid-md-bans"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════ ИГРОКИ ══════════════════ -->
+<div class="panel" id="p-players">
+<div class="card">
+  <div class="cmp-header">
+    <div class="cmp-player pleft">
+      <div class="cmp-selector"><div class="ph-badge ba">IC</div><span>423 · Bilguun Altanginj</span><span style="font-size:11px;color:var(--t2)">▾</span></div>
+      <div class="cmp-meta">
+        <div class="cmp-meta-item"><span class="cmi-label">Керри</span><span class="cmi-sub">Роль</span></div>
+        <div class="cmp-meta-item"><span class="cmi-label">Inner Circle</span><span class="cmi-sub">Команда</span></div>
+      </div>
+    </div>
+    <div class="cmp-vs"><span class="vs-big">VS</span></div>
+    <div class="cmp-player pright">
+      <div class="cmp-selector"><span style="font-size:11px;color:var(--t2)">▾</span><span>bottega</span><div class="ph-badge bb">MD</div></div>
+      <div class="cmp-meta">
+        <div class="cmp-meta-item"><span class="cmi-sub">Команда</span><span class="cmi-label">MODUS</span></div>
+        <div class="cmp-meta-item"><span class="cmi-sub">Роль</span><span class="cmi-label">Керри</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary stats -->
+  <div style="padding:0 0 0">
+    <div style="padding:10px 18px 4px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px;background:rgba(255,255,255,.01)">Ключевые показатели</div>
+    <div class="top5-wrap">
+      <div class="top5-half">
+        <div class="sk"><span class="sk-v" style="color:var(--gold)">8</span><span class="sk-l">УСП</span></div>
+        <div class="sk"><span class="sk-v">694</span><span class="sk-l">Золото/мин</span></div>
+        <div class="sk"><span class="sk-v">815</span><span class="sk-l">Опыт/мин</span></div>
+        <div class="sk"><span class="sk-v">10.7</span><span class="sk-l">Крипы/мин</span></div>
+        <div class="sk"><span class="sk-v" style="color:var(--win)">63%</span><span class="sk-l">Уч. в убийствах</span></div>
+      </div>
+      <div class="top5-half rside">
+        <div class="sk"><span class="sk-v" style="color:var(--win)">9.2</span><span class="sk-l">УСП</span></div>
+        <div class="sk"><span class="sk-v">691</span><span class="sk-l">Золото/мин</span></div>
+        <div class="sk"><span class="sk-v" style="color:var(--win)">862</span><span class="sk-l">Опыт/мин</span></div>
+        <div class="sk"><span class="sk-v">10.9</span><span class="sk-l">Крипы/мин</span></div>
+        <div class="sk"><span class="sk-v" style="color:var(--win)">60%</span><span class="sk-l">Уч. в убийствах</span></div>
+      </div>
+    </div>
+    <div class="color-hint">
+      <div class="ch-item"><div class="ch-dot" style="background:var(--win)"></div>выше среднего по турниру</div>
+      <div class="ch-item"><div class="ch-dot" style="background:var(--gold)"></div>средний показатель</div>
+      <div class="ch-item"><div class="ch-dot" style="background:var(--lose)"></div>ниже среднего</div>
+      <span style="margin-left:auto;font-size:10px;color:var(--t3)">УСП = убийства / (смерти × 0.5 + подачи)</span>
+    </div>
+  </div>
+
+  <!-- Detail -->
+  <div class="detail-table">
+    <div class="dt-half">
+      <div class="dt-sec">Дополнительная статистика</div>
+      <div class="dt-row"><span class="dt-key">Урон героям / мин</span><span class="dt-val">627.5</span></div>
+      <div class="dt-row"><span class="dt-key">Урон по башням / мин</span><span class="dt-val dv-md">195</span></div>
+      <div class="dt-row"><span class="dt-key">Варды поставлено / карту</span><span class="dt-val">0.6</span></div>
+      <div class="dt-row"><span class="dt-key">Варды уничтожено / карту</span><span class="dt-val">0.8</span></div>
+      <div class="dt-row"><span class="dt-key">Лагеря застакано / мин</span><span class="dt-val">0</span></div>
+      <div class="dt-row"><span class="dt-key">Лечение героев / мин</span><span class="dt-val">7.6</span></div>
+      <div class="dt-row"><span class="dt-key">Оглушение / мин</span><span class="dt-val">0.3</span></div>
+    </div>
+    <div class="dt-half dborder">
+      <div class="dt-sec">Дополнительная статистика</div>
+      <div class="dt-row"><span class="dt-key">Урон героям / мин</span><span class="dt-val dv-hi">771.3</span></div>
+      <div class="dt-row"><span class="dt-key">Урон по башням / мин</span><span class="dt-val dv-md">157.1</span></div>
+      <div class="dt-row"><span class="dt-key">Варды поставлено / карту</span><span class="dt-val">0.8</span></div>
+      <div class="dt-row"><span class="dt-key">Варды уничтожено / карту</span><span class="dt-val dv-hi">1.9</span></div>
+      <div class="dt-row"><span class="dt-key">Лагеря застакано / мин</span><span class="dt-val">0.1</span></div>
+      <div class="dt-row"><span class="dt-key">Лечение героев / мин</span><span class="dt-val">6</span></div>
+      <div class="dt-row"><span class="dt-key">Оглушение / мин</span><span class="dt-val">0.3</span></div>
+    </div>
+  </div>
+
+  <!-- Heroes + Radar -->
+  <div class="hr-section">
+    <div class="hr-heroes">
+      <div class="hr-title">Любимые герои</div>
+      <div class="hr-row">
+        <div class="hr-img" style="overflow:hidden;border-radius:5px;flex-shrink:0" id="pi-morphling"></div>
+        <div class="hr-info"><div class="hr-name">Morphling</div><div class="hr-sub">9 карт</div></div>
+        <span class="hr-wr wr-md">44%</span>
+      </div>
+      <div class="hr-row">
+        <div class="hr-img" style="overflow:hidden;border-radius:5px;flex-shrink:0" id="pi-pa"></div>
+        <div class="hr-info"><div class="hr-name">Phantom Assassin</div><div class="hr-sub">6 карт</div></div>
+        <span class="hr-wr wr-md">50%</span>
+      </div>
+      <div class="hr-row">
+        <div class="hr-img" style="overflow:hidden;border-radius:5px;flex-shrink:0" id="pi-am"></div>
+        <div class="hr-info"><div class="hr-name">Anti-Mage</div><div class="hr-sub">7 карт</div></div>
+        <span class="hr-wr wr-lo">29%</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+        <div class="ch-item"><div class="ch-dot" style="background:var(--win)"></div>&gt;60% побед</div>
+        <div class="ch-item"><div class="ch-dot" style="background:var(--gold)"></div>40–60%</div>
+        <div class="ch-item"><div class="ch-dot" style="background:var(--lose)"></div>&lt;40%</div>
+      </div>
+    </div>
+
+    <div class="radar-center">
+      <div class="rc-title">Сравнение профилей</div>
+      <svg class="rv" viewBox="-115 -115 230 230" id="rv"></svg>
+      <div class="radar-legend">
+        <div class="rl"><div class="rl-sw" style="background:var(--A)"></div>423</div>
+        <div class="rl"><div class="rl-sw" style="background:var(--B)"></div>bottega</div>
+      </div>
+    </div>
+
+    <div class="hr-heroes hborder">
+      <div class="hr-title" style="text-align:right">Любимые герои</div>
+      <div class="hr-row rev">
+        <div class="hr-img" style="overflow:hidden;border-radius:5px;flex-shrink:0" id="pi-zeus"></div>
+        <div class="hr-info r"><div class="hr-name">Zeus</div><div class="hr-sub">9 карт</div></div>
+        <span class="hr-wr wr-md">44%</span>
+      </div>
+      <div class="hr-row rev">
+        <div class="hr-img" style="overflow:hidden;border-radius:5px;flex-shrink:0" id="pi-ls"></div>
+        <div class="hr-info r"><div class="hr-name">Lifestealer</div><div class="hr-sub">9 карт</div></div>
+        <span class="hr-wr wr-md">56%</span>
+      </div>
+      <div class="hr-row rev">
+        <div class="hr-img" style="overflow:hidden;border-radius:5px;flex-shrink:0" id="pi-bm"></div>
+        <div class="hr-info r"><div class="hr-name">Beastmaster</div><div class="hr-sub">4 карты</div></div>
+        <span class="hr-wr wr-md">50%</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;justify-content:flex-end;flex-wrap:wrap">
+        <div class="ch-item"><div class="ch-dot" style="background:var(--win)"></div>&gt;60%</div>
+        <div class="ch-item"><div class="ch-dot" style="background:var(--gold)"></div>40–60%</div>
+        <div class="ch-item"><div class="ch-dot" style="background:var(--lose)"></div>&lt;40%</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════ ТУРНИР ══════════════════ -->
+<div class="panel" id="p-tourn">
+
+  <div class="card">
+    <div class="tourn-hdr">
+      <div class="tourn-title">European Pro League Season 36</div>
+      <div class="tourn-meta">
+        <div class="tm-item"><span class="tm-val">European Pro League</span><span class="tm-label">Организатор</span></div>
+        <div class="tm-item"><span class="tm-val">02.04 – 19.04.2026</span><span class="tm-label">Даты</span></div>
+        <div class="tm-item"><span class="tm-val">12</span><span class="tm-label">Команд</span></div>
+        <div class="tm-item"><span class="tm-val" style="color:var(--t3)">—</span><span class="tm-label">Призовой фонд</span></div>
+      </div>
+    </div>
+    <div class="teams-strip">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);margin-bottom:10px">Участники</div>
+      <div class="teams-grid" id="teams-grid"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="match-hdr">
+      <div class="match-hdr-title">Матчи</div>
+      <div style="display:flex;gap:3px;padding-bottom:0">
+        <button class="pst on" onclick="matchTab('done',this)">Завершённые</button>
+        <button class="pst" onclick="matchTab('upcoming',this)">Предстоящие</button>
+      </div>
+    </div>
+    <div id="matches-done">
+      <div class="mlist" id="mlist-done"></div>
+      <div class="pager"><button class="pb">‹</button><span>1 / 4</span><button class="pb">›</button></div>
+    </div>
+    <div id="matches-upcoming" style="display:none">
+      <div class="mlist" id="mlist-upcoming"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="padding:14px 20px 0;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px">Статистика турнира</div>
+    <div class="stabs">
+      <button class="stab on" onclick="tournStat('heroes',this)">Герои</button>
+      <button class="stab" onclick="tournStat('teams',this)">Команды</button>
+    </div>
+    <div id="ts-heroes" style="padding:14px">
+      <div class="th-row"><span></span><span>Герой</span><span>Пики</span><span>Баны</span><span>Win%</span></div>
+      <div class="htable" id="hero-stats-table"></div>
+    </div>
+    <div id="ts-teams" style="display:none;padding:14px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="teams-stats"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+function wrClass(w){return w>=60?'wr-hi':w>=40?'wr-md':'wr-lo'}
+
+/* ── Hero visual data: color gradient + emoji ── */
+const HERO_VIS={
+  snapfire:     {g:['#c0392b','#7d1f0e'],e:'🔥'},
+  lina:         {g:['#e74c3c','#f39c12'],e:'🔥'},
+  shadow_fiend: {g:['#6c3483','#1a1a2e'],e:'💀'},
+  morphling:    {g:['#2980b9','#1abc9c'],e:'🌊'},
+  medusa:       {g:['#1e8449','#117a65'],e:'🐍'},
+  storm_spirit: {g:['#2471a3','#85c1e9'],e:'⚡'},
+  dragon_knight:{g:['#1a5276','#f39c12'],e:'🐉'},
+  tidehunter:   {g:['#154360','#1abc9c'],e:'🌊'},
+  invoker:      {g:['#d4ac0d','#e67e22'],e:'✨'},
+  kunkka:       {g:['#1f618d','#85c1e9'],e:'⚓'},
+  antimage:     {g:['#6c3483','#c0392b'],e:'⚔️'},
+  doom_bringer: {g:['#7d1f0e','#e74c3c'],e:'😈'},
+  spirit_breaker:{g:['#5d6d7e','#85929e'],e:'🐂'},
+  zeus:         {g:['#f0b27a','#d4ac0d'],e:'⚡'},
+  undying:      {g:['#1e8449','#145a32'],e:'☠️'},
+  life_stealer: {g:['#c0392b','#922b21'],e:'🩸'},
+  razor:        {g:['#1a5276','#5dade2'],e:'⚡'},
+  witch_doctor: {g:['#117a65','#1e8449'],e:'🧙'},
+  beastmaster:  {g:['#7e5109','#a04000'],e:'🦁'},
+  pugna:        {g:['#4a235a','#76448a'],e:'👻'},
+  tiny:         {g:['#566573','#85929e'],e:'🪨'},
+  leshrac:      {g:['#1d8348','#76448a'],e:'💎'},
+  jakiro:       {g:['#2471a3','#c0392b'],e:'🐲'},
+  phoenix:      {g:['#e67e22','#f39c12'],e:'🔥'},
+  naga_siren:   {g:['#117a65','#1abc9c'],e:'🧜'},
+  terrorblade:  {g:['#6c3483','#922b21'],e:'😈'},
+  shadow_demon: {g:['#4a235a','#1a1a2e'],e:'👾'},
+  invoker:      {g:['#d4ac0d','#e67e22'],e:'✨'},
+  puck:         {g:['#1abc9c','#2980b9'],e:'🧚'},
+  batrider:     {g:['#7d1f0e','#e67e22'],e:'🦇'},
+  monkey_king:  {g:['#d4ac0d','#e67e22'],e:'🐒'},
+  crystal_maiden:{g:['#85c1e9','#2471a3'],e:'❄️'},
+  chen:         {g:['#1e8449','#d4ac0d'],e:'🐴'},
+  ancient_apparition:{g:['#aed6f1','#2471a3'],e:'❄️'},
+  phantom_assassin:{g:['#6c3483','#c0392b'],e:'🗡️'},
+  alchemist:    {g:['#27ae60','#d4ac0d'],e:'⚗️'},
+  pangolier:    {g:['#e67e22','#d4ac0d'],e:'🛡️'},
+  kez:          {g:['#1abc9c','#2471a3'],e:'⚔️'},
+};
+
+function heroSVG(n, w=100, h=62){
+  const v=HERO_VIS[n]||{g:['#2c3e50','#34495e'],e:'⚔️'};
+  const id='g'+n.replace(/[^a-z]/g,'');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="display:block">
+    <defs><linearGradient id="${id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${v.g[0]}"/><stop offset="100%" stop-color="${v.g[1]}"/></linearGradient></defs>
+    <rect width="${w}" height="${h}" fill="url(#${id})"/>
+    <rect width="${w}" height="${h}" fill="rgba(0,0,0,0.18)"/>
+    <text x="${w/2}" y="${h*0.62}" font-size="${Math.round(h*0.5)}" text-anchor="middle" dominant-baseline="middle">${v.e}</text>
+  </svg>`;
+}
+
+/* small hero art for player section (48x30) */
+function heroArtSmall(n){return heroSVG(n,48,30)}
+/* hero art for tournament table (42x26) */
+function heroArtTable(n){return heroSVG(n,42,26)}
+
+const IC_PICKS=[
+  {n:'snapfire',label:'Snapfire',picks:17,wr:53},
+  {n:'lina',label:'Lina',picks:15,wr:47},
+  {n:'shadow_fiend',label:'Shadow Fiend',picks:13,wr:62},
+  {n:'morphling',label:'Morphling',picks:10,wr:44},
+  {n:'medusa',label:'Medusa',picks:9,wr:67},
+  {n:'storm_spirit',label:'Storm Spirit',picks:9,wr:56},
+  {n:'dragon_knight',label:'Dragon Knight',picks:9,wr:33},
+  {n:'tidehunter',label:'Tidehunter',picks:9,wr:44},
+  {n:'invoker',label:'Invoker',picks:8,wr:75},
+  {n:'kunkka',label:'Kunkka',picks:7,wr:57},
+  {n:'antimage',label:'Anti-Mage',picks:7,wr:29},
+  {n:'doom_bringer',label:'Doom',picks:6,wr:50},
+];
+const MD_PICKS=[
+  {n:'spirit_breaker',label:'Spirit Breaker',picks:13,wr:62},
+  {n:'zeus',label:'Zeus',picks:9,wr:44},
+  {n:'undying',label:'Undying',picks:7,wr:57},
+  {n:'life_stealer',label:'Lifestealer',picks:7,wr:43},
+  {n:'razor',label:'Razor',picks:6,wr:67},
+  {n:'witch_doctor',label:'Witch Doctor',picks:5,wr:40},
+  {n:'beastmaster',label:'Beastmaster',picks:5,wr:60},
+  {n:'pugna',label:'Pugna',picks:4,wr:50},
+  {n:'tiny',label:'Tiny',picks:4,wr:25},
+  {n:'leshrac',label:'Leshrac',picks:3,wr:67},
+  {n:'jakiro',label:'Jakiro',picks:3,wr:33},
+  {n:'phoenix',label:'Phoenix',picks:3,wr:100},
+];
+const IC_BANS=[
+  {n:'naga_siren',label:'Naga Siren',picks:38},
+  {n:'terrorblade',label:'Terrorblade',picks:30},
+  {n:'shadow_demon',label:'Shadow Demon',picks:29},
+  {n:'invoker',label:'Invoker',picks:22},
+  {n:'puck',label:'Puck',picks:18},
+  {n:'batrider',label:'Batrider',picks:15},
+  {n:'phoenix',label:'Phoenix',picks:12},
+  {n:'monkey_king',label:'Monkey King',picks:10},
+];
+const MD_BANS=[
+  {n:'crystal_maiden',label:'Crystal Maiden',picks:12},
+  {n:'chen',label:'Chen',picks:11},
+  {n:'ancient_apparition',label:'AA',picks:9},
+  {n:'lina',label:'Lina',picks:8},
+  {n:'storm_spirit',label:'Storm Spirit',picks:7},
+  {n:'morphling',label:'Morphling',picks:6},
+  {n:'doom_bringer',label:'Doom',picks:5},
+  {n:'medusa',label:'Medusa',picks:5},
+];
+
+function buildTile(h,ban=false){
+  const wr=ban?'':` <div class="ht-wr ${wrClass(h.wr)}">${h.wr}%</div>`;
+  return `<div class="ht${ban?' ban':''}">${heroSVG(h.n)}<div class="ht-badge">${h.picks}</div>${wr}<div class="ht-name">${h.label}</div></div>`;
+}
+function buildBanChip(h){
+  return `<div class="ht ban" style="width:72px;height:45px;flex-shrink:0">${heroSVG(h.n,72,45)}<div class="ht-badge">${h.picks}</div><div class="ht-name">${h.label}</div></div>`;
+}
+document.getElementById('grid-ic-picks').innerHTML=IC_PICKS.map(h=>buildTile(h)).join('');
+document.getElementById('grid-md-picks').innerHTML=MD_PICKS.map(h=>buildTile(h)).join('');
+document.getElementById('grid-ic-bans').innerHTML=IC_BANS.map(h=>buildTile(h,true)).join('');
+document.getElementById('grid-md-bans').innerHTML=MD_BANS.map(h=>buildTile(h,true)).join('');
+document.getElementById('ban-ic').innerHTML=IC_BANS.slice(0,3).map(buildBanChip).join('');
+document.getElementById('ban-md').innerHTML=MD_BANS.slice(0,3).map(buildBanChip).join('');
+
+/* TOURNAMENT */
+const TEAMS=[
+  {name:'Nemiga Gaming',c:'#e05a2b',ab:'NG'},
+  {name:'Natus Vincere Jr',c:'#f1c40f',ab:'NJ'},
+  {name:'VP.Prodigy',c:'#e74c3c',ab:'VP'},
+  {name:'Yellow Submarine',c:'#f39c12',ab:'YS'},
+  {name:'Team Spirit Acad',c:'#9b59b6',ab:'TS'},
+  {name:'Rune Eaters',c:'#2ecc71',ab:'RE'},
+  {name:'ALIS VENTORUS',c:'#3498db',ab:'AV'},
+  {name:'Inner Circle',c:'#3d9eff',ab:'IC'},
+  {name:'Team Lynx',c:'#1abc9c',ab:'TL'},
+  {name:'Ilbirs eSports',c:'#e67e22',ab:'IL'},
+  {name:'MODUS',c:'#ff7040',ab:'MD'},
+  {name:'Balu Team',c:'#95a5a6',ab:'BT'},
+];
+const tg=document.getElementById('teams-grid');
+TEAMS.forEach(t=>{
+  tg.innerHTML+=`<div class="team-chip"><div class="team-logo-fake" style="background:${t.c}22;border:1px solid ${t.c}44;color:${t.c}">${t.ab}</div><span class="team-chip-name">${t.name}</span></div>`;
+});
+
+const MATCHES_DONE=[
+  {d:'16/04\n16:04',t1:'Yellow Submarine',c1:'#f39c12',t2:'Ilbirs eSports',c2:'#e67e22',s1:1,s2:2,fmt:'BO3'},
+  {d:'16/04\n16:05',t1:'Team Lynx',c1:'#1abc9c',t2:'Nemiga Gaming',c2:'#e05a2b',s1:2,s2:0,fmt:'BO3'},
+  {d:'16/04\n12:06',t1:'Team Spirit Acad',c1:'#9b59b6',t2:'MODUS',c2:'#ff7040',s1:0,s2:2,fmt:'BO3'},
+  {d:'15/04\n18:01',t1:'Nemiga Gaming',c1:'#e05a2b',t2:'Inner Circle',c2:'#3d9eff',s1:2,s2:1,fmt:'BO3'},
+  {d:'15/04\n11:58',t1:'Yellow Submarine',c1:'#f39c12',t2:'Team Lynx',c2:'#1abc9c',s1:0,s2:2,fmt:'BO3'},
+  {d:'14/04\n21:28',t1:'Nemiga Gaming',c1:'#e05a2b',t2:'Rune Eaters',c2:'#2ecc71',s1:2,s2:0,fmt:'BO3'},
+  {d:'14/04\n18:03',t1:'Team Lynx',c1:'#1abc9c',t2:'MODUS',c2:'#ff7040',s1:2,s2:1,fmt:'BO3'},
+  {d:'13/04\n16:07',t1:'Yellow Submarine',c1:'#f39c12',t2:'Team Spirit Acad',c2:'#9b59b6',s1:2,s2:0,fmt:'BO3'},
+];
+const MATCHES_UPCOMING=[
+  {d:'Сегодня\n18:00',t1:'Inner Circle',c1:'#3d9eff',t2:'MODUS',c2:'#ff7040',s1:null,s2:null,fmt:'BO3',live:true},
+  {d:'23/04\n15:00',t1:'Team Lynx',c1:'#1abc9c',t2:'Ilbirs eSports',c2:'#e67e22',s1:null,s2:null,fmt:'BO3'},
+  {d:'23/04\n18:00',t1:'Nemiga Gaming',c1:'#e05a2b',t2:'Yellow Submarine',c2:'#f39c12',s1:null,s2:null,fmt:'BO3'},
+];
+function renderMatch(m){
+  const w1=m.s1>m.s2,w2=m.s2>m.s1;
+  const sc=m.s1===null
+    ?`<div class="mscore"><span class="sn">vs</span></div>`
+    :`<div class="mscore"><span class="${w1?'sw':'sl'}">${m.s1}</span><span class="ms-sep">–</span><span class="${w2?'sw':'sl'}">${m.s2}</span></div>`;
+  const dl=m.d.split('\n');
+  const dd=m.live
+    ?`<div class="mr-live-lbl">⬤ Скоро</div><div style="font-size:12px;color:var(--t1);font-weight:600">${dl[1]}</div>`
+    :`<div>${dl[0]}</div><div>${dl[1]}</div>`;
+  return `<div class="mr${m.live?' live':''}">
+    <div class="mr-date">${dd}</div>
+    <div class="mt-cell"><div class="mt-logo-fake" style="background:${m.c1}22;color:${m.c1};border:1px solid ${m.c1}44">${m.t1.slice(0,2).toUpperCase()}</div><span class="mt-name" style="${w1?'color:var(--t1);font-weight:700':''}">${m.t1}</span></div>
+    ${sc}
+    <div class="mt-cell r"><span class="mt-name" style="${w2?'color:var(--t1);font-weight:700':''}">${m.t2}</span><div class="mt-logo-fake" style="background:${m.c2}22;color:${m.c2};border:1px solid ${m.c2}44">${m.t2.slice(0,2).toUpperCase()}</div></div>
+    <div class="mr-fmt${m.live?' ltag':''}">${m.live?'⬤ LIVE':m.fmt}</div>
+  </div>`;
+}
+document.getElementById('mlist-done').innerHTML=MATCHES_DONE.map(renderMatch).join('');
+document.getElementById('mlist-upcoming').innerHTML=MATCHES_UPCOMING.map(renderMatch).join('');
+
+/* HERO STATS */
+const HERO_STATS=[
+  {n:'batrider',label:'Batrider',role:'Инициатор',picks:14,bans:58,wr:64.3},
+  {n:'puck',label:'Puck',role:'Контроль',picks:14,bans:50,wr:71.4},
+  {n:'phoenix',label:'Phoenix',role:'Teamfight',picks:12,bans:58,wr:66.7},
+  {n:'monkey_king',label:'Monkey King',role:'Сплит-пуш',picks:32,bans:29,wr:65.6},
+  {n:'alchemist',label:'Alchemist',role:'Farm & push',picks:9,bans:58,wr:44.4},
+  {n:'pangolier',label:'Pangolier',role:'Инициатор',picks:30,bans:30,wr:56.7},
+];
+const ht=document.getElementById('hero-stats-table');
+HERO_STATS.forEach(h=>{
+  const wc=wrClass(h.wr);
+  ht.innerHTML+=`<div class="htr"><div class="h-art" style="overflow:hidden;border-radius:5px">${heroSVG(h.n,42,26)}</div><div><div class="hn">${h.label}</div><div class="hs">${h.role}</div></div><div><div class="htn">${h.picks}</div><div class="htl">пики</div></div><div><div class="htn">${h.bans}</div><div class="htl">баны</div></div><div class="htwr"><div class="htwr-v ${wc}">${h.wr}%</div><div class="htwr-bar"><div class="htwr-fill" style="width:${h.wr}%;background:${h.wr>=60?'var(--win)':h.wr>=40?'var(--gold)':'var(--lose)'}"></div></div></div></div>`;
+});
+
+/* TEAM STATS */
+const TEAM_STATS=[
+  {name:'Team Lynx',c:'#1abc9c',w:8,g:10},
+  {name:'Nemiga Gaming',c:'#e05a2b',w:7,g:10},
+  {name:'MODUS',c:'#ff7040',w:6,g:10},
+  {name:'Ilbirs eSports',c:'#e67e22',w:5,g:9},
+  {name:'Inner Circle',c:'#3d9eff',w:4,g:10},
+  {name:'Yellow Submarine',c:'#f39c12',w:3,g:10},
+];
+const ts=document.getElementById('teams-stats');
+TEAM_STATS.forEach((t,i)=>{
+  const wr=Math.round(t.w/t.g*100);
+  ts.innerHTML+=`<div style="background:var(--raised);border-radius:9px;padding:12px 14px;border:1px solid var(--b)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:28px;height:28px;border-radius:6px;background:${t.c}22;color:${t.c};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:800;font-size:11px;border:1px solid ${t.c}44">${i+1}</div><span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px">${t.name}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--t2)">${t.w}В / ${t.g-t.w}П</span><span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;color:${wr>=60?'var(--win)':wr>=40?'var(--gold)':'var(--lose)'}">${wr}%</span></div><div style="height:4px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden"><div style="width:${wr}%;height:100%;background:${t.c};border-radius:99px"></div></div></div>`;
+});
+
+/* TAB SWITCH */
+function sw(name){
+  ['team','players','tourn'].forEach((n,i)=>{
+    document.querySelectorAll('.tab')[i].classList.toggle('on',n===name);
+    document.getElementById('p-'+n).classList.toggle('on',n===name);
+  });
+}
+function poolTab(name,btn){
+  document.querySelectorAll('.pst').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('pool-picks').style.display=name==='picks'?'':'none';
+  document.getElementById('pool-bans').style.display=name==='bans'?'':'none';
+}
+function matchTab(name,btn){
+  document.querySelectorAll('#p-tourn .pst').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('matches-done').style.display=name==='done'?'':'none';
+  document.getElementById('matches-upcoming').style.display=name==='upcoming'?'':'none';
+}
+function tournStat(name,btn){
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('ts-heroes').style.display=name==='heroes'?'':'none';
+  document.getElementById('ts-teams').style.display=name==='teams'?'':'none';
+}
+
+/* RADAR */
+(function(){
+  const axes=['УСП','ЗВМ','ОВМ','КВМ','ДВМ','УВУ'];
+  const A=[75,65,70,55,42,60],B=[92,72,68,78,68,52];
+  const R=90,N=axes.length;
+  const svg=document.getElementById('rv');
+  if(!svg)return;
+  function pt(i,r){const a=(Math.PI*2*i/N)-Math.PI/2;return[r*Math.cos(a),r*Math.sin(a)]}
+  [20,40,60,80,100].forEach(pct=>{
+    const r=R*pct/100;
+    const pts=Array.from({length:N},(_,i)=>pt(i,r).join(',')).join(' ');
+    const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    p.setAttribute('points',pts);p.setAttribute('class','rg');svg.appendChild(p);
+    // scale label on vertical axis (spoke 0 goes straight up)
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',-8);t.setAttribute('y',-r+4);
+    t.setAttribute('class','rl-scale');t.textContent=pct;svg.appendChild(t);
+  });
+  axes.forEach((lbl,i)=>{
+    const[x2,y2]=pt(i,R);
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',0);l.setAttribute('y1',0);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('class','rs');svg.appendChild(l);
+    const[lx,ly]=pt(i,R+15);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',lx);t.setAttribute('y',ly+4);
+    t.setAttribute('class','rl-text');t.textContent=lbl;svg.appendChild(t);
+  });
+  function area(vals,cls,dc){
+    const pts=vals.map((v,i)=>pt(i,v*R/100).join(',')).join(' ');
+    const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    p.setAttribute('points',pts);p.setAttribute('class','ra '+cls);svg.appendChild(p);
+    vals.forEach((v,i)=>{
+      const[dx,dy]=pt(i,v*R/100);
+      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',dx);c.setAttribute('cy',dy);c.setAttribute('r',3);
+      c.setAttribute('class',dc);svg.appendChild(c);
+    });
+  }
+  area(B,'ra-B','rd-B');area(A,'ra-A','rd-A');
+})();
+
+/* Inject SVG hero arts for player section */
+const PI={
+  'pi-morphling':'morphling','pi-pa':'phantom_assassin','pi-am':'antimage',
+  'pi-zeus':'zeus','pi-ls':'life_stealer','pi-bm':'beastmaster'
+};
+Object.entries(PI).forEach(([id,n])=>{
+  const el=document.getElementById(id);
+  if(el) el.innerHTML=heroSVG(n,50,31);
+});
+
+/* BARS */
+window.addEventListener('load',()=>{
+  document.querySelectorAll('.bar-a,.bar-b').forEach(el=>{
+    const w=el.style.width;el.style.width='0';
+    setTimeout(()=>{el.style.width=w;},200);
+  });
+});
+</script>
+</body>
+</html>
